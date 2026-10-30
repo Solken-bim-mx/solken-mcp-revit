@@ -1,11 +1,11 @@
 {
-    "name": "mcp-server-for-revit",
+    "name": "solken-mcp-revit",
     "version": "1.0.0",
-    "description": "MCP server for interacting with Autodesk Revit through AI assistants like Claude",
+    "description": "MCP server for Autodesk Revit, part of the Solken BIM toolchain -- read model data and quantities from Revit through any MCP-compatible AI client. Free component of Solken Agent.",
     "main": "index.js",
     "type": "module",
     "bin": {
-        "mcp-server-for-revit": "./build/index.js"
+        "solken-mcp-revit": "./build/index.js"
     },
     "engines": {
         "node": ">=20.0.0"
@@ -22,7 +22,7 @@
     ],
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/mcp-servers-for-revit/mcp-servers-for-revit.git"
+        "url": "git+https://github.com/Solken-bim-mx/solken-mcp-revit.git"
     },
     "keywords": [
         "mcp",
@@ -31,16 +31,18 @@
         "claude",
         "ai",
         "bim",
-        "architecture"
+        "architecture",
+        "solken"
     ],
     "license": "MIT",
+    "author": "Carlos I. Rodríguez Herrera (Solken)",
     "publishConfig": {
         "access": "public"
     },
     "bugs": {
-        "url": "https://github.com/mcp-servers-for-revit/mcp-servers-for-revit/issues"
+        "url": "https://github.com/Solken-bim-mx/solken-mcp-revit/issues"
     },
-    "homepage": "https://github.com/mcp-servers-for-revit/mcp-servers-for-revit#readme",
+    "homepage": "https://solkenbim.com",
     "dependencies": {
         "@modelcontextprotocol/sdk": "^1.7.0",
         "better-sqlite3": "^12.8.0",

@@ -75,7 +75,7 @@ namespace RevitMCPCommandSet.Services
                 Result = new AIResult<List<object>>
                 {
                     Success = true,
-                    Message = $"成功获取{elementInfoList.Count}个元素信息，具体信息储存在Response属性中"+ message,
+                    Message = $"成功获取{elementInfoList.Count}个元素信息，具体信息储存在Response属性中" + message,
                     Response = elementInfoList,
                 };
             }
@@ -206,6 +206,17 @@ namespace RevitMCPCommandSet.Services
                 appliedFilters.Add($"类别：{settings.FilterCategory}");
             }
             // 2. 元素类型过滤器
+            // CORREGIDO (2026-08-17): FilterElementType puede venir como
+            // nombre de clase .NET (ej. "Wall", "Floor" -- se resuelve via
+            // Type.GetType) O como nombre de familia/tipo REAL del modelo
+            // de Revit (ej. "contratrabe", "200x400" -- esto nunca fue una
+            // clase .NET, es un nombre puesto por el usuario en Revit).
+            // Antes, si Type.GetType fallaba, se lanzaba una excepcion y
+            // el filtro completo fallaba ("无法找到类型"). Ahora, si no es
+            // una clase .NET valida, se aplica como filtro de texto sobre
+            // el nombre de tipo/familia DESPUES de recolectar los
+            // elementos (ver el filtro post-coleccion mas abajo).
+            string typeNameFallbackFilter = null;
             if (!string.IsNullOrWhiteSpace(settings.FilterElementType))
             {
 
@@ -231,7 +242,12 @@ namespace RevitMCPCommandSet.Services
                 }
                 else
                 {
-                    throw new Exception($"警告：无法找到类型 '{settings.FilterElementType}'");
+                    // No es un nombre de clase .NET valido -- se asume
+                    // que es un nombre de familia o tipo real del modelo
+                    // (ej. "contratrabe", "200x400"). Se aplica como
+                    // filtro de texto post-coleccion, no se lanza error.
+                    typeNameFallbackFilter = settings.FilterElementType;
+                    appliedFilters.Add($"名称/族匹配（文本）：{settings.FilterElementType}");
                 }
             }
             // 3. 族符号过滤器 (仅适用于元素实例)
@@ -282,7 +298,46 @@ namespace RevitMCPCommandSet.Services
                     System.Diagnostics.Trace.WriteLine($"应用了{filters.Count}个过滤条件的组合过滤器 (逻辑AND关系)");
                 }
             }
-            return collector.ToElements().ToList();
+
+            List<Element> elements = collector.ToElements().ToList();
+
+            // NUEVO (2026-08-17): filtro de nombre de familia/tipo real,
+            // aplicado en memoria despues de la coleccion cuando
+            // FilterElementType no correspondia a una clase .NET valida.
+            // Compara (sin distinguir mayusculas/minusculas, coincidencia
+            // parcial) contra: el nombre del TIPO del elemento (element.Name,
+            // ej. "200x400"), el nombre de la FAMILIA si es FamilyInstance
+            // (ej. "contratrabe"), y el FamilyName si el propio elemento
+            // recolectado ya es un ElementType.
+            if (!string.IsNullOrWhiteSpace(typeNameFallbackFilter))
+            {
+                elements = elements.Where(el =>
+                {
+                    string typeName = el.Name ?? "";
+                    if (typeName.IndexOf(typeNameFallbackFilter, StringComparison.OrdinalIgnoreCase) >= 0)
+                        return true;
+
+                    if (el is FamilyInstance fi)
+                    {
+                        string familyName = fi.Symbol?.Family?.Name ?? "";
+                        if (familyName.IndexOf(typeNameFallbackFilter, StringComparison.OrdinalIgnoreCase) >= 0)
+                            return true;
+                    }
+
+                    if (el is ElementType et)
+                    {
+                        string etFamilyName = et.FamilyName ?? "";
+                        if (etFamilyName.IndexOf(typeNameFallbackFilter, StringComparison.OrdinalIgnoreCase) >= 0)
+                            return true;
+                    }
+
+                    return false;
+                }).ToList();
+
+                System.Diagnostics.Trace.WriteLine($"Filtro de nombre '{typeNameFallbackFilter}' aplicado: {elements.Count} elemento(s) coinciden.");
+            }
+
+            return elements;
         }
 
         /// <summary>

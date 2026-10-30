@@ -6,8 +6,8 @@
         <PlatformTarget>x64</PlatformTarget>
         <ImplicitUsings>true</ImplicitUsings>
         <PublishAddinFiles>true</PublishAddinFiles>
-        <Configurations>Debug R20;Debug R21;Debug R22;Debug R23;Debug R24;Debug R25;Debug R26</Configurations>
-        <Configurations>$(Configurations);Release R20;Release R21;Release R22;Release R23;Release R24;Release R25;Release R26</Configurations>
+        <Configurations>Debug R20;Debug R21;Debug R22;Debug R23;Debug R24;Debug R25;Debug R26;Debug R27</Configurations>
+        <Configurations>$(Configurations);Release R20;Release R21;Release R22;Release R23;Release R24;Release R25;Release R26;Release R27</Configurations>
     </PropertyGroup>
 
     <PropertyGroup Condition="$(Configuration.Contains('R20'))">
@@ -43,7 +43,21 @@
         <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
         <DefineConstants>$(DefineConstants);REVIT2022_OR_GREATER;REVIT2023_OR_GREATER;REVIT2024_OR_GREATER</DefineConstants>
     </PropertyGroup>
+    <PropertyGroup Condition="$(Configuration.Contains('R27'))">
+        <RevitVersion>2027</RevitVersion>
+        <TargetFramework>net10.0-windows7.0</TargetFramework>
+        <DefineConstants>$(DefineConstants);REVIT2022_OR_GREATER;REVIT2023_OR_GREATER;REVIT2024_OR_GREATER</DefineConstants>
+        <!-- RevitMCPSDK aun no publica version 2027.x en NuGet (ultima: 2026.0.0.5).
+             Se fija manualmente abajo via RevitMCPSDKVersion. Quitar este override
+             en cuanto el proyecto RevitMCPSDK publique una version 2027.x. -->
+        <RevitMCPSDKVersion>2026.0.0.5</RevitMCPSDKVersion>
+    </PropertyGroup>
 
+    <PropertyGroup>
+        <!-- Por defecto, sigue al RevitVersion de la configuracion activa.
+             El bloque R27 de arriba ya fijo su propio valor explicito. -->
+        <RevitMCPSDKVersion Condition="'$(RevitMCPSDKVersion)' == ''">$(RevitVersion).*</RevitMCPSDKVersion>
+    </PropertyGroup>
     <PropertyGroup>
         <StartAction>Program</StartAction>
         <StartProgram>C:\Program Files\Autodesk\Revit $(RevitVersion)\Revit.exe</StartProgram>
@@ -58,8 +72,17 @@
         <PackageReference Include="Nice3point.Revit.Extensions" Version="$(RevitVersion).*" />
         <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="$(RevitVersion).*" />
 		<PackageReference Include="Nice3point.Revit.Api.RevitAPIUI" Version="$(RevitVersion).*" />
-		<PackageReference Include="RevitMCPSDK" Version="$(RevitVersion).*" />
+		<!-- R20-R26: paquete NuGet normal. R27: no existe version net10.0 aun,
+		     se usa el proyecto vendorizado RevitMCPSDK.Compat (ver /vendor). -->
     </ItemGroup>
+    <ItemGroup Condition="!$(Configuration.Contains('R27'))">
+        <PackageReference Include="RevitMCPSDK" Version="$(RevitMCPSDKVersion)" />
+    </ItemGroup>
+
+    <ItemGroup Condition="$(Configuration.Contains('R27'))">
+        <ProjectReference Include="$(MSBuildThisFileDirectory)..\vendor\RevitMCPSDK.Compat\RevitMCPSDK.Compat.csproj" />
+    </ItemGroup>
+
 
     <ItemGroup>
       <Reference Include="System.Net.Http" />

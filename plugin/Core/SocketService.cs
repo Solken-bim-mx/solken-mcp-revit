@@ -18,7 +18,9 @@ namespace revit_mcp_plugin.Core
     {
         private static SocketService _instance;
         private TcpListener _listener;
+        private TcpListener _listenerV6;
         private Thread _listenerThread;
+        private Thread _listenerThreadV6;
         private bool _isRunning;
         private int _port = 8080;
         private UIApplication _uiApp;
@@ -30,7 +32,7 @@ namespace revit_mcp_plugin.Core
         {
             get
             {
-                if(_instance == null)
+                if (_instance == null)
                     _instance = new SocketService();
                 return _instance;
             }
@@ -76,7 +78,7 @@ namespace revit_mcp_plugin.Core
             // Load configuration and register commands.
             ConfigurationManager configManager = new ConfigurationManager(_logger);
             configManager.LoadConfiguration();
-            
+
 
             //// 从配置中读取服务端口
             //// Read the service port from the configuration.
@@ -102,14 +104,40 @@ namespace revit_mcp_plugin.Core
             try
             {
                 _isRunning = true;
+
+                // Listener IPv4 (0.0.0.0) - comportamiento original
                 _listener = new TcpListener(IPAddress.Any, _port);
                 _listener.Start();
 
-                _listenerThread = new Thread(ListenForClients)
+                _listenerThread = new Thread(() => ListenForClients(_listener))
                 {
                     IsBackground = true
                 };
-                _listenerThread.Start();              
+                _listenerThread.Start();
+
+                // Listener IPv6 (::) - necesario porque el cliente MCP (Node)
+                // intenta conectarse primero por ::1 y si nadie escucha ahí
+                // la conexión falla con ECONNREFUSED, sin caer de respaldo a IPv4
+                // en algunos entornos/versiones de Node.
+                try
+                {
+                    _listenerV6 = new TcpListener(IPAddress.IPv6Any, _port);
+                    _listenerV6.Start();
+
+                    _listenerThreadV6 = new Thread(() => ListenForClients(_listenerV6))
+                    {
+                        IsBackground = true
+                    };
+                    _listenerThreadV6.Start();
+
+                    _logger.Info($"Socket service listening on IPv4 and IPv6, port {_port}");
+                }
+                catch (Exception ex)
+                {
+                    // Si el listener IPv6 falla (ej. IPv6 deshabilitado a nivel SO),
+                    // seguimos funcionando solo con IPv4, no es un error fatal.
+                    _logger.Info($"IPv6 listener could not start (continuing on IPv4 only): {ex.Message}");
+                }
             }
             catch (Exception)
             {
@@ -128,9 +156,17 @@ namespace revit_mcp_plugin.Core
                 _listener?.Stop();
                 _listener = null;
 
-                if(_listenerThread!=null && _listenerThread.IsAlive)
+                if (_listenerThread != null && _listenerThread.IsAlive)
                 {
                     _listenerThread.Join(1000);
+                }
+
+                _listenerV6?.Stop();
+                _listenerV6 = null;
+
+                if (_listenerThreadV6 != null && _listenerThreadV6.IsAlive)
+                {
+                    _listenerThreadV6.Join(1000);
                 }
             }
             catch (Exception)
@@ -139,13 +175,13 @@ namespace revit_mcp_plugin.Core
             }
         }
 
-        private void ListenForClients()
+        private void ListenForClients(TcpListener listener)
         {
             try
             {
                 while (_isRunning)
                 {
-                    TcpClient client = _listener.AcceptTcpClient();
+                    TcpClient client = listener.AcceptTcpClient();
 
                     Thread clientThread = new Thread(HandleClientCommunication)
                     {
@@ -156,9 +192,9 @@ namespace revit_mcp_plugin.Core
             }
             catch (SocketException)
             {
-                
+
             }
-            catch(Exception)
+            catch (Exception)
             {
                 // log
             }
@@ -208,7 +244,7 @@ namespace revit_mcp_plugin.Core
                     stream.Write(responseData, 0, responseData.Length);
                 }
             }
-            catch(Exception)
+            catch (Exception)
             {
                 // log
             }
@@ -250,7 +286,7 @@ namespace revit_mcp_plugin.Core
                 // 执行命令
                 // Execute command.
                 try
-                {                
+                {
                     object result = command.Execute(request.GetParamsObject(), request.Id);
 
                     return CreateSuccessResponse(request.Id, result);

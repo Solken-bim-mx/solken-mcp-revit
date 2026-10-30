@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+        Reemplazo propio (vendorizado) del paquete NuGet "RevitMCPSDK" 2026.0.0.5,
+        usado UNICAMENTE en la configuracion R27 (Revit 2027 / net10.0-windows7.0),
+        porque ese paquete aun no publica una version compatible con net10.0.
+
+        Reimplementa solo la superficie que usan RevitMCPPlugin y RevitMCPCommandSet
+        (namespaces API.Base, API.Interfaces, API.Models.JsonRPC, API.Utils,
+        Exceptions), extraida por reflexion del ensamblado real 2026.0.0.5 y por
+        inspeccion de todos los call-sites en este repo. Quitar este proyecto y
+        volver al PackageReference de NuGet en cuanto exista una version 2027.x
+        publicada de RevitMCPSDK.
+    -->
+
+    <PropertyGroup>
+        <TargetFramework>net10.0-windows7.0</TargetFramework>
+        <RevitVersion Condition="'$(RevitVersion)' == ''">2027</RevitVersion>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>disable</Nullable>
+        <RootNamespace>RevitMCPSDK</RootNamespace>
+        <AssemblyName>RevitMCPSDK</AssemblyName>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+        <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="$(RevitVersion).*" />
+        <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI" Version="$(RevitVersion).*" />
+    </ItemGroup>
+
+</Project>

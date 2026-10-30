@@ -122,6 +122,16 @@
       "commandName": "create_dimensions",
       "description": "Create dimension annotations between elements or points in the current view",
       "assemblyPath": "RevitMCPCommandSet.dll"
+    },
+    {
+      "commandName": "get_rebar_host_data",
+      "description": "Get rebar bars actually placed inside specific host elements (footings, grade beams, columns) via RebarHostData",
+      "assemblyPath": "RevitMCPCommandSet.dll"
+    },
+    {
+      "commandName": "get_element_by_id",
+      "description": "Get a specific element by its ElementId, including instance and type parameters, without requiring UI selection",
+      "assemblyPath": "RevitMCPCommandSet.dll"
     }
   ]
 }
