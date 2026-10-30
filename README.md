@@ -9,6 +9,11 @@ mcp-servers-for-revit enables AI clients like Claude, Cline, and other MCP-compa
 > [!NOTE]
 > This is a fork of the original [revit-mcp](https://github.com/mcp-servers-for-revit/revit-mcp) project with additional tools and functionality improvements.
 
+> [!TIP]
+> **🇲🇽 Este fork es mantenido por [Solken](https://solkenbim.com)**, un agente de IA para gestión de obra que cruza datos de Revit, OPUS/Neodata, MS Project y Power BI. Este MCP de Revit es el mismo componente de lectura que usa Solken internamente — lo publicamos gratis y de código abierto (MIT, misma licencia del proyecto original) para que lo pruebes con tu propio cliente MCP. Si te sirve y quieres el resto del flujo (presupuesto, cronograma, alertas, reportes), el plan Free de Solken Agent no cuesta nada: [solkenbim.com/servicios.html](https://solkenbim.com/servicios.html).
+>
+> Cambios de este fork respecto al original: nueva herramienta `get_element_by_id` (lee un elemento por ElementId sin requerir que esté seleccionado en la UI de Revit).
+
 ## Architecture
 
 ```mermaid
@@ -30,7 +35,7 @@ The **MCP Server** (TypeScript) translates tool calls from AI clients into WebSo
 ## Requirements
 
 - **Node.js 18+** (for the MCP server)
-- **Autodesk Revit 2020 - 2026** (any supported version)
+- **Autodesk Revit 2020 - 2027** (any supported version — 2027 is covered ahead of its official Autodesk release via a compatibility shim, see [Supported Revit Versions](#supported-revit-versions))
 
 ## Quick Start (Using a Release)
 
@@ -60,6 +65,9 @@ The **MCP Server** (TypeScript) translates tool calls from AI clients into WebSo
 4. Start Revit — if prompted about an unknown add-in, click **Always Load**
 
 5. In Revit, click the **Settings** button on the mcp-servers-for-revit ribbon tab, enable the commands you want to use, and click **Save**
+
+> [!WARNING]
+> **Step 5 is not optional and must be repeated after every update.** The plugin decides which commands respond at runtime from `Commands/RevitMCPCommandSet/commandRegistry.json` — a file that records which commands *you* enabled through the Settings screen, separate from `command.json` (the manifest of what's *available*, deployed by every build). If `commandRegistry.json` doesn't exist yet, the plugin silently creates it empty, and every tool call fails with `Method '<name>' not found` — including tools that worked before, because the registry wasn't touched by the new build. If you ever see that error after updating, re-open **Settings → Select All → Save** before troubleshooting anything else.
 
 ## MCP Server Setup
 
@@ -139,6 +147,13 @@ If using a release ZIP, the command set is pre-installed inside the plugin. For 
 | `query_stored_data` | Query stored project and room data |
 | `send_code_to_revit` | Send C# code to Revit to execute |
 | `say_hello` | Display a greeting dialog in Revit (connection test) |
+| `get_element_by_id` | Read every instance and type parameter of an element by its `ElementId`, without requiring it to be selected in the Revit UI |
+| `get_project_views` | List all views in the current project |
+| `get_rebar_host_data` | Get rebar quantities and host-element data for reinforcement takeoffs |
+| `get_schedule_data` | Read rows and columns from an existing Revit schedule |
+
+> [!IMPORTANT]
+> After pulling a build with new tools (or installing a release ZIP for the first time), Revit does **not** pick them up automatically. Open the **Settings** button on the ribbon tab, re-select the commands you want enabled (or **Select All**), and click **Save** — see [Command Set Setup](#command-set-setup) and the troubleshooting note below.
 
 ## Testing
 
@@ -235,12 +250,25 @@ The server compiles TypeScript to `server/build/`. During development you can ru
 
 ### Revit Plugin + Command Set
 
-Open `mcp-servers-for-revit.sln` in Visual Studio. The solution contains both the plugin and command set projects. Build configurations target Revit 2020-2026:
+Open `mcp-servers-for-revit.sln` in Visual Studio. The solution contains both the plugin and command set projects. Build configurations target Revit 2020-2027:
 
 - **Revit 2020-2024**: .NET Framework 4.8 (`Release R20` through `Release R24`)
-- **Revit 2025-2026**: .NET 8 (`Release R25`, `Release R26`)
+- **Revit 2025-2027**: .NET 8 / .NET 10 (`Release R25`, `Release R26`, `Release R27`)
 
 Building the solution automatically assembles the complete deployable layout in `plugin/bin/AddIn <year> <config>/` - the command set is copied into the plugin's `Commands/` folder as part of the build.
+
+### Supported Revit Versions
+
+This fork tracks Revit versions through build configurations in `plugin/RevitMCPPlugin.csproj` and `commandset/RevitMCPCommandSet.csproj` (`Configurations` property, plus one `PropertyGroup`/`ItemGroup` pair per version). Revit 2020-2026 use the official `Nice3point.Revit.*` NuGet packages for that year. **Revit 2027 is a special case**: at the time this fork added the `R27` configuration, Revit 2027 had not been officially released by Autodesk and no matching NuGet package existed yet, so the `R27` blocks reference the closest available package version as a compatibility shim and pin the assembly/target framework explicitly (see the `R27` conditions and the comments immediately above them in both `.csproj` files — they explain exactly which package stands in and why).
+
+**This maintenance burden is now this fork's own, not the upstream project's.** When Autodesk releases a new Revit version (2028 and beyond):
+
+1. Add a new configuration entry to the `Configurations` property in both `.csproj` files (plugin and command set).
+2. Add a matching `PropertyGroup`/`ItemGroup` pair for that version, following the pattern of the existing `R2x` blocks.
+3. Wait for (or shim, as done for R27) the corresponding `Nice3point.Revit.*` NuGet package for that Revit version.
+4. Build and verify against a real install of that Revit version before publishing a release — the shimmed R27 config in particular should be re-pinned to the official package as soon as Autodesk and Nice3point publish one, rather than left on the stand-in indefinitely.
+
+If you fork this project further, or are revisiting it after a long gap, grep both `.csproj` files for `R27` first — that's the version requiring the most judgment calls to replicate, and the comments there double as a template for the next one.
 
 ## Project Structure
 
@@ -262,7 +290,7 @@ mcp-servers-for-revit/
 
 A single `v*` tag drives the entire release. The [release workflow](.github/workflows/release.yml) automatically:
 
-- Builds the Revit plugin + command set for Revit 2020-2026
+- Builds the Revit plugin + command set for Revit 2020-2027
 - Creates a GitHub release with `mcp-servers-for-revit-vX.Y.Z-Revit<year>.zip` assets
 - Publishes the MCP server to npm as [`mcp-server-for-revit`](https://www.npmjs.com/package/mcp-server-for-revit)
 
