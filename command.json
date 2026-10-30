@@ -132,6 +132,21 @@
       "commandName": "get_element_by_id",
       "description": "Get a specific element by its ElementId, including instance and type parameters, without requiring UI selection",
       "assemblyPath": "RevitMCPCommandSet.dll"
+    },
+    {
+      "commandName": "get_project_views",
+      "description": "List views in the active Revit project, by default only schedule/quantification tables",
+      "assemblyPath": "RevitMCPCommandSet.dll"
+    },
+    {
+      "commandName": "get_schedule_data",
+      "description": "Extract headers and body rows of one or more schedule tables by their ElementIds",
+      "assemblyPath": "RevitMCPCommandSet.dll"
+    },
+    {
+      "commandName": "update_element_parameter",
+      "description": "Read or write a single instance or type parameter on an element by ElementId, with an explicit level (instance/type/auto)",
+      "assemblyPath": "RevitMCPCommandSet.dll"
     }
   ]
 }
