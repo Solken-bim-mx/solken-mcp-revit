@@ -22,6 +22,11 @@ namespace RevitMCPCommandSet.Commands
     ///     StorageType real del parámetro (texto, entero o número).
     ///   level (string, opcional, default "instance") -- "instance", "type" o
     ///     "auto" (intenta instancia primero, si no existe cae a tipo).
+    ///   unit (string, opcional) -- OBLIGATORIO si el parámetro es Double con
+    ///     una unidad real (Longitud/Área/Volumen...), ej. "m", "cm", "mm",
+    ///     "m2", "m3". Ignorado para texto, enteros y números sin unidad
+    ///     (ej. Avance). Si falta y el parámetro lo requiere, la escritura
+    ///     falla con un mensaje claro en vez de adivinar.
     /// </summary>
     public class UpdateElementParameterCommand : ExternalEventCommandBase
     {
@@ -62,6 +67,10 @@ namespace RevitMCPCommandSet.Commands
                     string level = data?["level"]?.Value<string>();
                     if (!string.IsNullOrWhiteSpace(level))
                         _handler.Level = level;
+
+                    string unit = data?["unit"]?.Value<string>();
+                    if (!string.IsNullOrWhiteSpace(unit))
+                        _handler.Unit = unit;
 
                     if (RaiseAndWaitForCompletion(15000))
                     {

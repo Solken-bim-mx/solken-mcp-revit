@@ -102,7 +102,7 @@ namespace RevitMCPCommandSet.Services
                     {
                         foreach (var r in resolved)
                         {
-                            SetParameterValue(r.Param, r.Request.Value);
+                            SetParameterValue(r.Param, r.Request.Value, r.Request.Unit);
                         }
                         trans.Commit();
                     }
@@ -244,7 +244,7 @@ namespace RevitMCPCommandSet.Services
             return item;
         }
 
-        private static void SetParameterValue(Parameter param, string rawValue)
+        private static void SetParameterValue(Parameter param, string rawValue, string unit)
         {
             switch (param.StorageType)
             {
@@ -259,6 +259,10 @@ namespace RevitMCPCommandSet.Services
                 case StorageType.Double:
                     if (!double.TryParse(rawValue, NumberStyles.Float, CultureInfo.InvariantCulture, out double doubleValue))
                         throw new Exception($"'{rawValue}' no es un número válido.");
+
+                    if (ParameterValueConverter.RequiresUnitConversion(param))
+                        doubleValue = ParameterValueConverter.ConvertToInternal(param, doubleValue, unit);
+
                     param.Set(doubleValue);
                     break;
                 case StorageType.ElementId:

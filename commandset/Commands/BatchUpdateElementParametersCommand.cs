@@ -12,8 +12,10 @@ namespace RevitMCPCommandSet.Commands
     /// <summary>
     /// Escribe varios (elemento, parámetro, valor) en una sola transacción
     /// (todo o nada). "data.updates" es un arreglo de objetos:
-    ///   { elementId, parameterName, value, level? }
-    /// Mismas reglas de nivel que update_element_parameter.
+    ///   { elementId, parameterName, value, level?, unit? }
+    /// Mismas reglas de nivel y de unidad que update_element_parameter --
+    /// "unit" es obligatorio por item cuando ese parámetro es Double con
+    /// unidad real (Longitud/Área/Volumen), ej. "m", "cm", "mm", "m2", "m3".
     /// </summary>
     public class BatchUpdateElementParametersCommand : ExternalEventCommandBase
     {
@@ -63,6 +65,10 @@ namespace RevitMCPCommandSet.Commands
                         string level = obj["level"]?.Value<string>();
                         if (!string.IsNullOrWhiteSpace(level))
                             req.Level = level;
+
+                        string unit = obj["unit"]?.Value<string>();
+                        if (!string.IsNullOrWhiteSpace(unit))
+                            req.Unit = unit;
 
                         requests.Add(req);
                     }

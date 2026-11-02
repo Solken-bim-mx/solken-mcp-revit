@@ -23,6 +23,12 @@ export function registerBatchUpdateElementParametersTool(server: McpServer) {
       .enum(["instance", "type", "auto"])
       .optional()
       .describe("Default: 'instance'. Same semantics as update_element_parameter's level."),
+    unit: z
+      .string()
+      .optional()
+      .describe(
+        "Required per item when that parameter is a Double with a real unit spec (Length/Area/Volume). Same semantics as update_element_parameter's unit (m, cm, mm, ft, in, m2, ft2, m3, ft3...). Ignored for text/integer/unitless items."
+      ),
   });
 
   server.tool(
@@ -31,7 +37,8 @@ export function registerBatchUpdateElementParametersTool(server: McpServer) {
       "If ANY update in the batch would fail (element not found, parameter not found at the requested level, read-only parameter), " +
       "the ENTIRE batch is aborted before writing anything, and every item's result explains why. " +
       "If all updates validate but writing one of them throws, the whole transaction is rolled back and nothing is left half-applied. " +
-      "Prefer this over calling update_element_parameter in a loop whenever writing more than one or two parameters together.",
+      "Prefer this over calling update_element_parameter in a loop whenever writing more than one or two parameters together. " +
+      "Each item with a real-unit Double parameter (Length/Area/Volume) needs its own 'unit' field -- omitting it fails validation for that item (UNIDAD_REQUERIDA) before anything is written.",
     {
       updates: z.array(updateSchema).min(1).describe("The batch of parameter writes to apply together"),
     },

@@ -17,7 +17,10 @@ export function registerUpdateElementParameterTool(server: McpServer) {
       "level='type' writes to the element's type/family symbol -- this affects EVERY instance that shares that type, not just the one queried; the response's sharedInstanceCount says how many. " +
       "level='auto' tries instance first and falls back to type only if the parameter isn't found at instance level. " +
       "Before calling this, read the element with get_element_by_id first: if the parameter name you want appears as a bare key, it's instance-level; if it only appears prefixed 'Tipo: <name>', it's type-level and you must pass level='type' or 'auto' explicitly, or the call will fail with NO_ENCONTRADO. " +
-      "Values are parsed according to the parameter's real StorageType (text, integer or number) -- Double parameters that represent a Length/Area/Volume (not a plain unitless number) are NOT unit-converted by this tool; use send_code_to_revit for those instead.",
+      "Values are parsed according to the parameter's real StorageType (text, integer or number). " +
+      "For Double parameters with a REAL unit spec (Length/Area/Volume...), you MUST pass 'unit' -- the tool converts value+unit to Revit's internal units before writing. " +
+      "Unitless Double parameters (like Avance, a 0-1 ratio) need no 'unit' and ignore it if passed. " +
+      "If 'unit' is required and missing, the call fails with UNIDAD_REQUERIDA instead of guessing.",
     {
       elementId: z
         .number()
@@ -38,6 +41,13 @@ export function registerUpdateElementParameterTool(server: McpServer) {
         .describe(
           "Where to look for and write the parameter. Default: 'instance'. Use 'auto' when unsure, or 'type' when get_element_by_id showed the field only as 'Tipo: <name>'."
         ),
+      unit: z
+        .string()
+        .optional()
+        .describe(
+          "Required when the parameter is a Double with a real unit spec (Length/Area/Volume). One of: m, cm, mm, ft, in, m2, ft2, m3, ft3 (and a few aliases). " +
+            "Ignored for text, integer, and unitless Double parameters (e.g. Avance). Omitting it for a parameter that needs it fails the call rather than writing a wrong value."
+        ),
     },
     async (args, extra) => {
       const params = {
@@ -45,6 +55,7 @@ export function registerUpdateElementParameterTool(server: McpServer) {
         parameterName: args.parameterName,
         value: args.value,
         level: args.level ?? "instance",
+        unit: args.unit,
       };
 
       try {

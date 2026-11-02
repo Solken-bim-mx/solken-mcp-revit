@@ -37,6 +37,14 @@ namespace RevitMCPCommandSet.Services
         /// <summary>"instance" (default), "type", o "auto" (instancia primero, si no existe cae a tipo).</summary>
         public string Level { get; set; } = "instance";
 
+        /// <summary>
+        /// Unidad en la que viene expresado Value, SOLO para parámetros Double
+        /// con especificación de unidad real (Longitud/Área/Volumen -- ver
+        /// ParameterValueConverter). Ignorado para texto, enteros, y números
+        /// sin unidad como Avance. ej. "m", "cm", "mm", "m2", "m3".
+        /// </summary>
+        public string Unit { get; set; }
+
         // Salida
         public AIResult<ParameterUpdateInfo> Result { get; private set; }
 
@@ -144,7 +152,7 @@ namespace RevitMCPCommandSet.Services
                 using (Transaction trans = new Transaction(doc, $"Actualizar parámetro {ParameterName}"))
                 {
                     trans.Start();
-                    SetParameterValue(param, Value);
+                    SetParameterValue(param, Value, Unit);
                     trans.Commit();
                 }
 
@@ -183,14 +191,15 @@ namespace RevitMCPCommandSet.Services
         }
 
         /// <summary>
-        /// Escribe el valor según el StorageType real del parámetro. Deliberadamente
-        /// NO intenta conversión de unidades para parámetros Double de tipo
-        /// Length/Area/Volume (ej. una cota en metros) -- esos deben seguir
-        /// escribiéndose con send_code_to_revit hasta que se agregue soporte
-        /// explícito de unidades aquí. Los parámetros Double "Número" sin unidad
-        /// (como Avance, 0-1) sí son seguros con Set(double) directo.
+        /// Escribe el valor según el StorageType real del parámetro. Para
+        /// Double, si el parámetro tiene una especificación de unidad REAL
+        /// (Longitud/Área/Volumen...), convierte rawValue desde "unit" a
+        /// unidades internas vía ParameterValueConverter -- si falta "unit"
+        /// en ese caso, lanza un error explícito en vez de escribir un valor
+        /// equivocado. Los parámetros Double sin unidad (como Avance 0-1)
+        /// ignoran "unit" y se escriben tal cual, como siempre.
         /// </summary>
-        private static void SetParameterValue(Parameter param, string rawValue)
+        private static void SetParameterValue(Parameter param, string rawValue, string unit)
         {
             switch (param.StorageType)
             {
@@ -207,6 +216,10 @@ namespace RevitMCPCommandSet.Services
                 case StorageType.Double:
                     if (!double.TryParse(rawValue, NumberStyles.Float, CultureInfo.InvariantCulture, out double doubleValue))
                         throw new Exception($"'{rawValue}' no es un número válido para este parámetro.");
+
+                    if (ParameterValueConverter.RequiresUnitConversion(param))
+                        doubleValue = ParameterValueConverter.ConvertToInternal(param, doubleValue, unit);
+
                     param.Set(doubleValue);
                     break;
 
