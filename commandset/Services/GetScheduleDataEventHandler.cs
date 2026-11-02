@@ -15,6 +15,21 @@ namespace RevitMCPCommandSet.Services
     /// vía ViewSchedule.GetTableData(), sin necesitar que la tabla esté
     /// activa en pantalla ni que el usuario cambie de vista.
     ///
+    /// LIMITACIÓN CONOCIDA, sin resolver (investigado 2026-11-02): en filas
+    /// de instancia individual (no fusionadas), las columnas de parámetro
+    /// COMPARTIDO (Clave OPUS, Avance, Estado, Frente, Intersección,
+    /// Resistencia, Nivel) devuelven "" pese a que Revit sí muestra su texto
+    /// en pantalla -- confirmado comparando contra una captura real. Los
+    /// campos nativos/calculados (Volumen, Acero) siempre funcionan. Se
+    /// descartaron dos hipótesis: (a) caché de tabla sin refrescar --
+    /// ViewSchedule.RefreshData() no cambia el resultado (se deja la llamada
+    /// de todos modos, es inofensiva); (b) la tabla necesita ser la vista
+    /// activa -- forzar UIDocument.ActiveView tampoco cambió el resultado
+    /// (se descartó ese intento por completo, generaba parpadeo visual sin
+    /// beneficio). Pendiente: investigar si hace falta resolver el valor vía
+    /// el parámetro real de la celda (algo como GetCellParamId) en vez de
+    /// GetCellText puro.
+    ///
     /// Complementa get_project_views: esa herramienta enumera QUÉ tablas
     /// existen; esta lee su CONTENIDO real (filas de cantidades).
     /// </summary>
@@ -67,6 +82,17 @@ namespace RevitMCPCommandSet.Services
 
                         itemResult.ViewName = schedule.Name;
 
+                        try
+                        {
+                            schedule.RefreshData();
+                        }
+                        catch
+                        {
+                            // Si el refresh falla (p.ej. API más vieja sin este
+                            // método, o la tabla no lo necesita), seguimos con
+                            // los datos ya cacheados -- no es un error fatal.
+                        }
+
                         TableData tableData = schedule.GetTableData();
 
                         // La sección Header suele traer los nombres de columna
@@ -105,12 +131,22 @@ namespace RevitMCPCommandSet.Services
                                 ? Math.Min(query.MaxRows.Value, bodySection.NumberOfRows)
                                 : bodySection.NumberOfRows;
 
+                            // Bug real encontrado 2026-10-29/30 y arreglado 2026-11-02:
+                            // en tablas con celdas fusionadas (filas de grupo por
+                            // tipo/categoría), GetCellText(r, c) solo devuelve texto
+                            // en la celda superior-izquierda de cada grupo fusionado
+                            // -- el resto de las celdas del mismo grupo devuelven "",
+                            // aunque visualmente en Revit se vea el texto repetido/
+                            // heredado en todas ellas. Esto hacía que TODAS las
+                            // columnas de texto (Avance, Estado, Clave OPUS, etc.)
+                            // salieran vacías en tablas agrupadas, dejando solo la
+                            // columna numérica de cantidad/volumen legible.
                             for (int r = 0; r < rowLimit; r++)
                             {
                                 var row = new List<string>();
                                 for (int c = 0; c < bodySection.NumberOfColumns; c++)
                                 {
-                                    row.Add(bodySection.GetCellText(r, c));
+                                    row.Add(GetEffectiveCellText(bodySection, r, c));
                                 }
                                 itemResult.Rows.Add(row);
                             }
@@ -147,6 +183,30 @@ namespace RevitMCPCommandSet.Services
             finally
             {
                 _resetEvent.Set();
+            }
+        }
+
+        /// <summary>
+        /// Lee el texto real de una celda, redirigiendo a la celda
+        /// superior-izquierda de su grupo si está fusionada.
+        /// TableSectionData.GetMergedCell(row, col) devuelve DIRECTAMENTE la
+        /// región fusionada que contiene esa celda (Top/Bottom/Left/Right) --
+        /// para una celda no fusionada, la región es ella misma (Top==Bottom==row,
+        /// Left==Right==col), así que llamar siempre a GetCellText(merged.Top,
+        /// merged.Left) es correcto en ambos casos sin necesitar una rama aparte.
+        /// </summary>
+        private static string GetEffectiveCellText(TableSectionData section, int row, int col)
+        {
+            try
+            {
+                TableMergedCell merged = section.GetMergedCell(row, col);
+                return section.GetCellText(merged.Top, merged.Left);
+            }
+            catch
+            {
+                // Si la API de fusión falla por algún motivo, no perder la
+                // lectura entera -- caer al comportamiento anterior para esta celda.
+                return section.GetCellText(row, col);
             }
         }
 
