@@ -96,6 +96,20 @@ Claude Desktop → Settings → Developer → Edit Config → `claude_desktop_co
 }
 ```
 
+> [!TIP]
+> **If you're developing this fork locally (not just using a published release), point `command` straight at `node` and `server/build/index.js` instead of a package name:**
+> ```json
+> {
+>     "mcpServers": {
+>         "mcp-server-for-revit": {
+>             "command": "node",
+>             "args": ["C:\\path\\to\\mcp-servers-for-revit\\server\\build\\index.js"]
+>         }
+>     }
+> }
+> ```
+> `npx -y <package-name>` or a bare command name resolves through whatever's on `PATH` — a global install (`npm install -g`) or an `npm link`, either of which goes stale the moment you run `npm run build` locally and don't also reinstall/relink. Pointing directly at the built file means every local build is picked up on the next Claude Desktop restart, with nothing else to remember.
+
 Restart Claude Desktop. When you see the hammer icon, the MCP server is connected.
 
 ![Claude Desktop connection](./assets/claude.png)
@@ -247,6 +261,9 @@ npm run build
 ```
 
 The server compiles TypeScript to `server/build/`. During development you can run it directly with `npx tsx server/src/index.ts`.
+
+> [!IMPORTANT]
+> **Adding a new tool to `server/src/tools/` requires its own build step — the plugin build does not do this for you.** `register.ts` auto-discovers tool files at runtime from `server/build/tools/`, so a new `.ts` file only becomes callable after `npm run build` runs inside `server/`. Building only the Visual Studio solution (plugin + command set) leaves `server/build/` untouched — Claude Desktop will keep running the old tool list until you rebuild the server too. If Claude Desktop is configured to launch this server via `node` with a path to `server/build/index.js` (recommended — see below), restarting Desktop after `npm run build` is enough to pick up the change; no reinstall or re-link needed.
 
 ### Revit Plugin + Command Set
 

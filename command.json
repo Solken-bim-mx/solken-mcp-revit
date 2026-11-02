@@ -147,6 +147,21 @@
       "commandName": "update_element_parameter",
       "description": "Read or write a single instance or type parameter on an element by ElementId, with an explicit level (instance/type/auto)",
       "assemblyPath": "RevitMCPCommandSet.dll"
+    },
+    {
+      "commandName": "get_elements_by_ids",
+      "description": "Batch version of get_element_by_id: read several elements by ElementId in one call",
+      "assemblyPath": "RevitMCPCommandSet.dll"
+    },
+    {
+      "commandName": "batch_update_element_parameters",
+      "description": "Write several (element, parameter, value) updates in a single all-or-nothing Revit transaction",
+      "assemblyPath": "RevitMCPCommandSet.dll"
+    },
+    {
+      "commandName": "list_family_types_with_instance_count",
+      "description": "List family types in a category with how many placed instances each has, including 0 (orphan types)",
+      "assemblyPath": "RevitMCPCommandSet.dll"
     }
   ]
 }
