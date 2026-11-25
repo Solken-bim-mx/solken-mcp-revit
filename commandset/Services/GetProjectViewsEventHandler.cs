@@ -85,7 +85,7 @@ namespace RevitMCPCommandSet.Services
                 var list = filtered
                     .Select(v => new ProjectViewInfo
                     {
-                        Id = v.Id.IntegerValue,
+                        Id = (int)v.Id.Value,
                         UniqueId = v.UniqueId,
                         Name = v.Name,
                         ViewType = v.ViewType.ToString(),

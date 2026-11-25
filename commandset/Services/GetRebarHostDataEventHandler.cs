@@ -129,7 +129,7 @@ namespace RevitMCPCommandSet.Services
         {
             var info = new RebarBarInfo
             {
-                Id = rebar.Id.IntegerValue,
+                Id = (int)rebar.Id.Value,
                 UniqueId = rebar.UniqueId,
                 Name = rebar.Name
             };
