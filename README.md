@@ -35,7 +35,7 @@ The **MCP Server** (TypeScript) translates tool calls from AI clients into WebSo
 ## Requirements
 
 - **Node.js 18+** (for the MCP server)
-- **Autodesk Revit 2020 - 2027** (any supported version — 2027 is covered ahead of its official Autodesk release via a compatibility shim, see [Supported Revit Versions](#supported-revit-versions))
+- **Autodesk Revit 2020 - 2026** (any supported version). Revit 2027 is on the roadmap but does not build yet — see [Supported Revit Versions](#supported-revit-versions).
 
 ## Quick Start (Using a Release)
 
@@ -276,7 +276,7 @@ Building the solution automatically assembles the complete deployable layout in 
 
 ### Supported Revit Versions
 
-This fork tracks Revit versions through build configurations in `plugin/RevitMCPPlugin.csproj` and `commandset/RevitMCPCommandSet.csproj` (`Configurations` property, plus one `PropertyGroup`/`ItemGroup` pair per version). Revit 2020-2026 use the official `Nice3point.Revit.*` NuGet packages for that year. **Revit 2027 is a special case**: at the time this fork added the `R27` configuration, Revit 2027 had not been officially released by Autodesk and no matching NuGet package existed yet, so the `R27` blocks reference the closest available package version as a compatibility shim and pin the assembly/target framework explicitly (see the `R27` conditions and the comments immediately above them in both `.csproj` files — they explain exactly which package stands in and why).
+This fork tracks Revit versions through build configurations in `plugin/RevitMCPPlugin.csproj` and `commandset/RevitMCPCommandSet.csproj` (`Configurations` property, plus one `PropertyGroup`/`ItemGroup` pair per version). Revit 2020-2026 use the official `Nice3point.Revit.*` NuGet packages for that year and build cleanly. **Revit 2027 is a known, currently-broken special case**: at the time this fork added the `R27` configuration, Revit 2027 had not been officially released by Autodesk and no matching NuGet package existed yet, so the `R27` blocks reference the closest available package version as a compatibility shim and pin the assembly/target framework explicitly (see the `R27` conditions and the comments immediately above them in both `.csproj` files). That shim's `IWaitableExternalEventHandler` interface shape does not match the ~30 existing event-handler implementations in `commandset/`, which currently produces 31 compile errors on `Release R27` / `Debug R27` — **R27 does not build as of this writing** and is excluded from releases until that interface mismatch is fixed. If you pick this up: grep both `.csproj` files for `R27` first, and be aware the CI release workflow (`.github/workflows/release.yml`) still attempts to build all 8 versions including R27 in one job — that step needs to be fixed or skipped before relying on the automated pipeline again.
 
 **This maintenance burden is now this fork's own, not the upstream project's.** When Autodesk releases a new Revit version (2028 and beyond):
 
