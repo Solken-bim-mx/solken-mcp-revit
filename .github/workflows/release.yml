@@ -65,8 +65,12 @@ jobs:
       - name: Build Revit 2026 (.NET 8)
         run: dotnet build mcp-servers-for-revit.sln -c "Release R26"
 
-      - name: Build Revit 2027 (.NET 8)
-        run: dotnet build mcp-servers-for-revit.sln -c "Release R27"
+      # Revit 2027 is intentionally excluded from the automated pipeline.
+      # RevitMCPSDK.Compat (the shim needed because Revit 2027 has no
+      # official NuGet package yet) produces 31 interface-mismatch errors
+      # against the ~30 existing event-handler implementations — "Release
+      # R27"/"Debug R27" do not build as of this writing. Re-add this step
+      # once that shim is fixed. See README.md § Supported Revit Versions.
 
       # ---------------------------------------------------------------
       # Create Release Assets
@@ -86,8 +90,8 @@ jobs:
             @{ Config = "Release R23"; Year = "2023" },
             @{ Config = "Release R24"; Year = "2024" },
             @{ Config = "Release R25"; Year = "2025" },
-            @{ Config = "Release R26"; Year = "2026" },
-            @{ Config = "Release R27"; Year = "2027" }
+            @{ Config = "Release R26"; Year = "2026" }
+            # Release R27 intentionally excluded — see build step above.
           )
 
           foreach ($rv in $revitVersions) {
